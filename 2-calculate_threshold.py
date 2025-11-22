@@ -20,7 +20,7 @@ def calculate_threshold(model, scenario, pr, baseline=slice('1991', '2020'), upp
 
     # Export the result
     # export the data
-    outdir = fr"C:\Users\binta\Research\Whiplash\DailyResult\{model}"
+    outdir = fr"C:\Users\binta\Research\Whiplash\DailyResult\{model}\Threshold"
     os.makedirs(outdir, exist_ok=True)
 
     outfile = os.path.join(outdir, f'threshold_{model}_{scenario}_1991-2020.nc')
@@ -48,12 +48,14 @@ def calculate_threshold(model, scenario, pr, baseline=slice('1991', '2020'), upp
     
     return result
 
-model = "ACCESS-CM2"
+# main code
+model = 'ACCESS-CM2'
 ssp = ['ssp245', 'ssp585']
 
-for i in tqdm(range(len(ssp)), desc='processing'):
-    
-    scenario = ssp[i]
+for i, scenario in enumerate(ssp):
+    print(f"\n{i+1}/{len(ssp)} Calculating the Extremes Threshold")
+    print(f"= Model      : {model}")
+    print(f"= Scenario   : {scenario.upper()}")
 
     indir = fr"C:\Users\binta\Research\Whiplash\DailyResult\{model}\Anom-{scenario.upper()}"
     files = [os.path.join(indir, f) for f in os.listdir(indir)
