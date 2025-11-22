@@ -7,17 +7,18 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import TwoSlopeNorm
 
 def detect_whiplash_1d_numbered(data1, data2, max_transition_days=30):
-    # change datatype into np.array
+    
+    # load data
     data1 = np.asarray(data1)
     data2 = np.asarray(data2)
 
     n = len(data1)
-
-    # detect NaN values
+    if len(data2) != n:
+        raise ValueError("data1 and data2 must have same length")
+    
+    # handle NaN
     nan_mask = np.isnan(data1) | np.isnan(data2)
-
-    # ignore the process if all values are NaN
-    if np.all(nan_mask):
+    if np.all(nan_mask): # ignore the process if all values are NaN
         return np.full(n, np.nan)
 
     # replace some NaN for processing
@@ -27,29 +28,49 @@ def detect_whiplash_1d_numbered(data1, data2, max_transition_days=30):
     whiplash = np.zeros(n, dtype=float)
     current_event_id = 1 # number labelling
 
-    # identify transition between two extremes
-    for i in range(n):
-        if d1[i] == 1 and whiplash[i] == 0:  # look for extreme 1
-            look_end = min(i + max_transition_days + 1, n)
-            for j in range(i + 1, look_end):
-                if d2[j] == 1 and whiplash[j] == 0: # look for extreme 2
+    # iterate through indices
+    i = 0
+    while i < n:
+        if d1[i] == 1: # find extreme 1
+            # find continous ones inside d1: [start1, end1]
+            start1 = i
+            while start1 - 1 >= 0 and d1[start1 - 1] == 1:
+                start1 -= 1
+            end1 = i
+            while end1 + 1 < n and d1[end1 + 1] == 1:
+                end1 += 1
+            
+            # search for any extreme 2
+            look_start = end1 + 1
+            look_end = min(end1 + 1 + max_transition_days, n)  # exclusive
+            for j in range(look_start, look_end):
+                if d2[j] == 1 and whiplash[j] == 0:
+                    # found a transition; determine continous extreme 2 around j
+                    start2 = j
+                    while start2 - 1 >= 0 and d2[start2 - 1] == 1:
+                        start2 -= 1
+                    end2 = j
+                    while end2 + 1 < n and d2[end2 + 1] == 1:
+                        end2 += 1
 
-                    # Mark backwards extreme 1 with current event ID
-                    k = i
-                    while k >= 0 and d1[k] == 1 and whiplash[k] == 0:
-                        whiplash[k] = current_event_id
-                        k -= 1
+                    # assign event id to full d1 and d2 blocks
+                    whiplash[start1:end1 + 1] = current_event_id
+                    whiplash[start2:end2 + 1] = current_event_id
 
-                    # Mark forward extreme 2 with same event ID
-                    k = j
-                    while k < n and d2[k] == 1 and whiplash[k] == 0:
-                        whiplash[k] = current_event_id
-                        k += 1
-                    
-                    # increment event ID for next whiplash event
+                    # find other extreme 1 within the event
+                    if data1[end1:start2].any():
+                        for i in range(end1, start2):
+                            if d1[i] == 1:
+                                whiplash[i] = current_event_id
+
                     current_event_id += 1
                     break
 
+            # advance i to end of this d1 block
+            i = end1 + 1
+        else:
+            i += 1
+            
     # restore NaN values
     whiplash[nan_mask] = np.nan
     
