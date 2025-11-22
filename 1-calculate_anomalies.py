@@ -9,13 +9,7 @@ def calculate_anomalies(model, scenario, precip):
     Calculate the standardized anomalies
     from 30-day rolling sum of precipitation
     """
-    print('\n=======================================')
-    print('== Calculating the standardized')
-    print('== anomalies of precipitation')
-    print(f'== Model    : {model}')
-    print(f'== Scenario : {scenario}')
-    print('=======================================')
-  
+
     def detrend_1d(y):
         """
         Apply detrending for a given data
@@ -50,7 +44,7 @@ def calculate_anomalies(model, scenario, precip):
             out[mask] = yy - yy.mean()
             return out
 
-        # compute slope
+        # compute slope & intercept manually (very stable)
         m = np.dot(dx, dy) / var
         b = yy.mean() - m * x.mean()
 
@@ -85,14 +79,14 @@ def calculate_anomalies(model, scenario, precip):
         return da_anom
 
     # remove linear trend
-    print('1 - removing linear trend')
+    print('= Removing linear trend')
     pr_detrended = remove_linear_trend(precip.chunk({'time':-1}))
 
     precip_ds.close()
     gc.collect()
 
     # 30-days moving cumulative precipitation
-    print('2 - calculating cumulative precipitation')
+    print('= Computing 30-day cumulative precipitation totals')
     def rolling_sum(da, window=30):
         # rolling sum to handle NaN value
         da_filled = da.fillna(0)
@@ -104,28 +98,27 @@ def calculate_anomalies(model, scenario, precip):
     pr30 = rolling_sum(pr_detrended) #pr_detrended.rolling(time=30).sum()
 
     # remove annual cycle
-    print('3 - removing annual cycle')
+    print('= Subtracting annual cycle')
     pr30 = remove_annual_cycle(pr30)
 
-    print('4 - calculate the standard anomalies')
+    print('= Calculating the standard anomalies')
     def standardize(da, dim="time"):
         std = da.std(dim)
         mean = da.mean(dim)
 
         # avoid divide-by-zero
-        std_safe = std.where(std > 0, np.NaN)
+        std_safe = std.where(std > 0, np.nan)
 
         return (da - mean) / std_safe
 
     pr30_anom = standardize(pr30)
 
-    print('5 - exporting to netcdf')
+    print('= Exporting to netcdf')
     batch_year = np.arange(1991, 2101, 10)
     outdir = fr"C:\Users\binta\Research\Whiplash\DailyResult\{model}\Anom-{scenario.upper()}"
     os.makedirs(outdir, exist_ok=True)
 
-    # exporting data per decade
-    for i in tqdm(range(len(batch_year)), desc='processing'):
+    for i in tqdm(range(len(batch_year)), desc='= Processing '):
         y = batch_year[i]
         decade = slice(f'{y}-01-01', f'{y+9}-12-31')
         outfile = os.path.join(outdir, f'pr_day_anom_{model}_{scenario}_r1i1p1f1_gn_{y}-{y+9}_v2.0.nc')
@@ -135,9 +128,13 @@ def calculate_anomalies(model, scenario, precip):
             encoding={'pr': {'zlib':True, 'complevel':4}})
 
 # Compute the anomalies
-model = "BCC-CSM2-MR"
+model = 'ACCESS-CM2'
+ssp = ['ssp245', 'ssp585']
 
-for scenario in ['ssp245', 'ssp585']:
+for i, scenario in enumerate(ssp):
+    print(f"\n{i+1}/{len(ssp)} Calculating Duration of Whiplash Events")
+    print(f"= Model      : {model}")
+    print(f"= Scenario   : {scenario.upper()}\n")
     indir = fr"C:\Users\binta\Research\Projection Data\NEX\Processed\{model}"
 
     precip_files = [
