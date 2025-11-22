@@ -85,7 +85,9 @@ ssp = ['ssp245', 'ssp585']
 indir = fr"C:\Users\binta\Research\Whiplash\DailyResult\{model}"
 
 for i, scenario in enumerate(ssp):
-    print(f'{i+1}/2 ----- {model} {scenario}')
+    print(f"\n{i+1}/{len(ssp)} Detecting Extreme Wet and Dry Events")
+    print(f"= Model      : {model}")
+    print(f"= Scenario   : {scenario.upper()}\n")
 
     outdir = rf'{indir}\Extremes-{scenario.upper()}'
     os.makedirs(outdir, exist_ok=True)
@@ -93,11 +95,11 @@ for i, scenario in enumerate(ssp):
     threshold_file = os.path.join(indir, f"threshold_{model}_{scenario}_1991-2020.nc")
     threshold = xr.open_dataset(threshold_file)
     
-    precip_dir = rf"C:\Users\binta\Research\Whiplash\DailyResult\{model}\Anom-{scenario.upper()}"
+    precip_dir = rf"{indir}\Anom-{scenario.upper()}"
     precip_files = [os.path.join(precip_dir, f) for f in os.listdir(precip_dir)
                     if os.path.isfile(os.path.join(precip_dir, f))]
     
-    for j in tqdm(range(len(precip_files)), desc='detecting whiplash events'):
+    for j in tqdm(range(len(precip_files)), desc='= Processing '):
         # open file
         precip_ds = xr.open_dataset(precip_files[j])
         pr30 = precip_ds['pr']
